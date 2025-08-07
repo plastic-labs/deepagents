@@ -1,7 +1,6 @@
 import inspect
 from functools import wraps
 from typing import Dict, List, Any, Callable, get_type_hints
-import json
 
 
 class ToolRegistry:

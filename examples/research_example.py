@@ -30,6 +30,19 @@ def internet_search(
         ]
     }
 
+# Optional: Direct filesystem tool (if you want files saved immediately)
+from src.tools import tool
+
+@tool(description="Write content directly to filesystem")
+def write_to_filesystem(filename: str, content: str) -> str:
+    """Write content directly to a file on the filesystem"""
+    try:
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(content)
+        return f"Successfully wrote {len(content)} characters to {filename}"
+    except Exception as e:
+        return f"Error writing to {filename}: {str(e)}"
+
 # Research sub-agent prompt
 sub_research_prompt = """You are a dedicated researcher. Your job is to conduct research based on the users questions.
 
@@ -74,6 +87,10 @@ When you think you have enough information to write a final report, write it to 
 
 You can call the critique-agent to get a critique of the final report. After that (if needed) you can do more research and edit the `final_report.md`.
 
+You have two file writing options:
+1. Use `write_file` for internal state (files stay in memory)
+2. Use `write_to_filesystem` to save files directly to disk immediately
+
 Write a comprehensive report with proper structure, detailed analysis, and source references."""
 
 async def main():
@@ -85,7 +102,7 @@ async def main():
     
     # Create the agent with subagents
     agent = create_deep_agent(
-        [internet_search],
+        [internet_search, write_to_filesystem],
         research_instructions,
         subagents=[research_sub_agent, critique_sub_agent]
     )
@@ -101,14 +118,22 @@ async def main():
     result = await agent.invoke(state)
     
     print("\n=== Research Complete ===")
-    print("Final report saved to: final_report.md")
+    
+    # Save files from agent state to actual filesystem
+    for filename, content in result.files.items():
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(content)
+            print(f"✅ Saved {filename} to filesystem")
+        except Exception as e:
+            print(f"❌ Failed to save {filename}: {e}")
     
     # Show final state
     if "final_report.md" in result.files:
         print("\n📄 Report Preview:")
         print(result.files["final_report.md"][:500] + "...")
     
-    print(f"\n📁 Files created: {list(result.files.keys())}")
+    print(f"\n📁 Files created in agent state: {list(result.files.keys())}")
     print(f"✅ Todos completed: {[todo.content for todo in result.todos]}")
 
 if __name__ == "__main__":

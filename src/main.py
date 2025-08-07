@@ -1,7 +1,7 @@
 from .state import AgentState
-from .tools import tool, registry
+from .tools import tool
 from .agent import Agent
-from typing import List, Any, Optional, Dict
+from typing import List, Any, Dict
 
 
 # Built-in tools

@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import os
+from typing import Dict, List
 from dotenv import load_dotenv
 
 # Add project root to path so we can import src as a package
@@ -9,12 +10,14 @@ project_root = os.path.join(script_dir, '..')
 sys.path.insert(0, project_root)
 
 from src import create_deep_agent, AgentState
+from src.tools import tool
 
 # Load environment variables
-load_dotenv()
+_ = load_dotenv()
 
 # Example usage
-def internet_search(query: str) -> dict:
+@tool(description="Search the internet for information")
+def internet_search(query: str) -> Dict[str, List[str]]:
     """Search the internet"""
     return {"results": [f"Found results for {query}"]}
 
