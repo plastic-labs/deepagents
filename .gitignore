@@ -9,9 +9,12 @@ wheels/
 # Virtual environments
 .venv
 
+# ignore all env files except .env.template
 .env
 *.env
 .env.*
+!.env.template
+
 
 legacy/
 

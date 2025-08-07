@@ -1,18 +1,20 @@
 import asyncio
-import sys
 import os
+import sys
 from typing import Literal
+
 from dotenv import load_dotenv
 
 # Add project root to path so we can import src as a package
 script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.join(script_dir, '..')
+project_root = os.path.join(script_dir, "..")
 sys.path.insert(0, project_root)
 
-from src import create_deep_agent, SubAgent, AgentState
+from src import AgentState, SubAgent, create_deep_agent  # noqa: E402
 
 # Load environment variables
 load_dotenv()
+
 
 # Search tool implementation
 def internet_search(
@@ -26,22 +28,28 @@ def internet_search(
     # Mock implementation - replace with actual Tavily client
     return {
         "results": [
-            {"title": f"Result for {query}", "content": f"Detailed information about {query}"}
+            {
+                "title": f"Result for {query}",
+                "content": f"Detailed information about {query}",
+            }
         ]
     }
 
+
 # Optional: Direct filesystem tool (if you want files saved immediately)
-from src.tools import tool
+from src.tools import tool  # noqa: E402
+
 
 @tool(description="Write content directly to filesystem")
 def write_to_filesystem(filename: str, content: str) -> str:
     """Write content directly to a file on the filesystem"""
     try:
-        with open(filename, 'w', encoding='utf-8') as f:
+        with open(filename, "w", encoding="utf-8") as f:
             f.write(content)
         return f"Successfully wrote {len(content)} characters to {filename}"
     except Exception as e:
         return f"Error writing to {filename}: {str(e)}"
+
 
 # Research sub-agent prompt
 sub_research_prompt = """You are a dedicated researcher. Your job is to conduct research based on the users questions.
@@ -67,13 +75,13 @@ research_sub_agent = SubAgent(
     name="research-agent",
     description="Used to research more in depth questions. Only give this researcher one topic at a time.",
     prompt=sub_research_prompt,
-    tools=["internet_search"]
+    tools=["internet_search"],
 )
 
 critique_sub_agent = SubAgent(
     name="critique-agent",
     description="Used to critique the final report and provide feedback.",
-    prompt=sub_critique_prompt
+    prompt=sub_critique_prompt,
 )
 
 # Research instructions
@@ -93,50 +101,52 @@ You have two file writing options:
 
 Write a comprehensive report with proper structure, detailed analysis, and source references."""
 
+
 async def main():
     # Check for API key
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         print("Please set ANTHROPIC_API_KEY in your .env file")
         return
-    
+
     # Create the agent with subagents and enhanced dialogue logging
     agent = create_deep_agent(
         [internet_search, write_to_filesystem],
         research_instructions,
         subagents=[research_sub_agent, critique_sub_agent],
         name="ResearchCoordinator",
-        verbose=True  # Enable enhanced dialogue logging
+        verbose=True,  # Enable enhanced dialogue logging
     )
-    
+
     # Create state
     state = AgentState()
     state.add_message("user", "Research the impact of AI on healthcare in 2024")
-    
+
     print("🤖 Starting deep research agent with subagents...")
     print("This may take a few minutes...")
-    
+
     # Run agent
     result = await agent.invoke(state)
-    
+
     print("\n=== Research Complete ===")
-    
+
     # Save files from agent state to actual filesystem
     for filename, content in result.files.items():
         try:
-            with open(filename, 'w', encoding='utf-8') as f:
+            with open(filename, "w", encoding="utf-8") as f:
                 f.write(content)
             print(f"✅ Saved {filename} to filesystem")
         except Exception as e:
             print(f"❌ Failed to save {filename}: {e}")
-    
+
     # Show final state
     if "final_report.md" in result.files:
         print("\n📄 Report Preview:")
         print(result.files["final_report.md"][:500] + "...")
-    
+
     print(f"\n📁 Files created in agent state: {list(result.files.keys())}")
     print(f"✅ Todos completed: {[todo.content for todo in result.todos]}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

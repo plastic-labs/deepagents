@@ -1,19 +1,21 @@
 import asyncio
-import sys
 import os
+import sys
 from typing import Dict, List
+
 from dotenv import load_dotenv
 
 # Add project root to path so we can import src as a package
 script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.join(script_dir, '..')
+project_root = os.path.join(script_dir, "..")
 sys.path.insert(0, project_root)
 
-from src import create_deep_agent, SubAgent, AgentState
-from src.tools import tool
+from src import AgentState, SubAgent, create_deep_agent  # noqa: E402
+from src.tools import tool  # noqa: E402
 
 # Load environment variables
 _ = load_dotenv()
+
 
 # Enhanced tools with logging
 @tool(description="Search the internet for information")
@@ -22,22 +24,25 @@ def internet_search(query: str) -> Dict[str, List[str]]:
     print(f"🔍 [Tool] Performing web search for: {query}")
     return {"results": [f"Found detailed information about {query}"]}
 
+
 @tool(description="Analyze data and provide insights")
 def data_analysis(data: str) -> Dict[str, str]:
     """Analyze provided data"""
     print(f"📊 [Tool] Analyzing data: {data[:50]}{'...' if len(data) > 50 else ''}")
     return {"analysis": f"Analysis of {data}: Key insights and patterns found"}
 
+
 @tool(description="Write content directly to filesystem")
 def write_to_filesystem(filename: str, content: str) -> str:
     """Write content directly to a file on the filesystem"""
     try:
-        with open(filename, 'w', encoding='utf-8') as f:
+        with open(filename, "w", encoding="utf-8") as f:
             f.write(content)
         print(f"💾 [Tool] Saved {len(content)} characters to {filename}")
         return f"Successfully wrote {len(content)} characters to {filename}"
     except Exception as e:
         return f"Error writing to {filename}: {str(e)}"
+
 
 # Create specialized subagents
 researcher = SubAgent(
@@ -50,7 +55,7 @@ researcher = SubAgent(
 4. Focus on accuracy and thoroughness
 
 When given a research task, break it down into specific search queries and gather comprehensive information.""",
-    tools=["internet_search"]
+    tools=["internet_search"],
 )
 
 analyst = SubAgent(
@@ -63,7 +68,7 @@ analyst = SubAgent(
 4. Present findings clearly
 
 Focus on providing actionable insights and clear explanations of your analysis.""",
-    tools=["data_analysis"]
+    tools=["data_analysis"],
 )
 
 writer = SubAgent(
@@ -76,7 +81,7 @@ writer = SubAgent(
 4. Save final content to files when appropriate
 
 Focus on creating high-quality, polished written work.""",
-    tools=["write_to_filesystem"]
+    tools=["write_to_filesystem"],
 )
 
 # Main coordinator instructions
@@ -95,91 +100,98 @@ Your workflow should be:
 
 Always explain your thinking process and which subagent you're using for each task."""
 
+
 async def main():
     # Check for API key
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         print("Please set ANTHROPIC_API_KEY in your .env file")
         return
-    
+
     print("🚀 Enhanced DeepAgents Dialogue Example")
     print("=" * 50)
-    
+
     # Create the main coordinator agent
     coordinator = create_deep_agent(
         tools=[internet_search, data_analysis, write_to_filesystem],
         instructions=coordinator_instructions,
         subagents=[researcher, analyst, writer],
         name="Coordinator",
-        verbose=True  # Enable detailed logging
+        verbose=True,  # Enable detailed logging
     )
-    
+
     # Create initial state
     state = AgentState()
-    
+
     # Example complex task
     task = """Research the benefits of meditation for productivity, analyze the key findings, 
     and write a comprehensive report with practical recommendations."""
-    
+
     state.add_message("user", task)
-    
+
     print(f"📋 Task: {task}")
     print("\n" + "=" * 50)
     print("🎭 AGENT DIALOGUE LOG")
     print("=" * 50)
-    
+
     # Run the coordinator
     result = await coordinator.invoke(state)
-    
+
     print("\n" + "=" * 50)
     print("📊 FINAL RESULTS")
     print("=" * 50)
-    
+
     # Save files from agent state to filesystem
     if result.files:
         print(f"📁 Files created in agent memory: {list(result.files.keys())}")
         for filename, content in result.files.items():
             try:
-                with open(filename, 'w', encoding='utf-8') as f:
+                with open(filename, "w", encoding="utf-8") as f:
                     f.write(content)
                 print(f"✅ Saved {filename} to filesystem ({len(content)} characters)")
             except Exception as e:
                 print(f"❌ Failed to save {filename}: {e}")
-    
+
     # Show conversation summary
     print(f"\n💬 Total conversation turns: {len(result.messages)}")
-    print(f"📝 Final message count: {len([m for m in result.messages if m['role'] == 'assistant'])}")
-    
+    print(
+        f"📝 Final message count: {len([m for m in result.messages if m['role'] == 'assistant'])}"
+    )
+
     if result.todos:
         print(f"✅ Todos: {[todo.content for todo in result.todos]}")
+
 
 async def simple_example():
     """Simpler example showing just the enhanced logging"""
     print("\n🔧 Simple Agent Dialogue Example")
     print("=" * 40)
-    
+
     # Create a simple agent with enhanced logging
     simple_agent = create_deep_agent(
         tools=[internet_search],
         instructions="You are a helpful assistant. Use the available tools to help answer questions.",
         name="Helper",
-        verbose=True
+        verbose=True,
     )
-    
+
     state = AgentState()
     state.add_message("user", "What are the key benefits of exercise?")
-    
+
     result = await simple_agent.invoke(state)
-    
+
+    print("result", result)
+
     print("\n✅ Simple example completed!")
+
 
 if __name__ == "__main__":
     print("Choose an example:")
     print("1. Complex multi-agent dialogue (default)")
     print("2. Simple enhanced logging example")
-    
+
     choice = input("Enter choice (1 or 2): ").strip()
-    
+
     if choice == "2":
         asyncio.run(simple_example())
     else:
