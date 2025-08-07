@@ -1,25 +1,30 @@
+from typing import Any
+
+from .agent import Agent
 from .state import AgentState
 from .tools import tool
-from .agent import Agent
-from typing import List, Any, Dict
 
 
 # Built-in tools
 @tool(description="Create and manage todos")
-def write_todos(todos: List[Dict[str, str]]) -> Dict[str, List[Dict[str, str]]]:
+def write_todos(todos: list[dict[str, str]]) -> dict[str, list[dict[str, str]]]:
     return {"todos": todos}
 
 
 @tool(description="Invoke a specialized subagent to handle specific tasks")
-def invoke_subagent(subagent_type: str, task_description: str, state=None) -> Dict[str, str]:
+def invoke_subagent(
+    subagent_type: str, task_description: str, state=None
+) -> dict[str, str]:
     """Invoke a specialized subagent with a specific task"""
     # This tool will be enhanced when subagents are available
     # For now, it's a placeholder that gets replaced in actual implementations
-    return {"message": f"Subagent {subagent_type} invoked with task: {task_description}"}
+    return {
+        "message": f"Subagent {subagent_type} invoked with task: {task_description}"
+    }
 
 
-@tool(description="List all files")
-def ls(state) -> List[str]:
+@tool(description="list all files")
+def ls(state) -> list[str]:
     return list(state.files.keys())
 
 
@@ -45,7 +50,7 @@ def read_file(file_path: str, offset: int = 0, limit: int = 2000, state=None) ->
 
 
 @tool(description="Write to a file")
-def write_file(file_path: str, content: str, state=None) -> Dict[str, Dict[str, str]]:
+def write_file(file_path: str, content: str, state=None) -> dict[str, dict[str, str]]:
     state.files[file_path] = content
     return {"files": state.files}
 
@@ -57,7 +62,7 @@ def edit_file(
     new_string: str,
     replace_all: bool = False,
     state=None,
-) -> Dict[str, Dict[str, str]]:
+) -> dict[str, dict[str, str]]:
     if file_path not in state.files:
         return f"Error: File '{file_path}' not found"
 
@@ -80,7 +85,7 @@ def edit_file(
 # Subagent support
 class SubAgent:
     def __init__(
-        self, name: str, description: str, prompt: str, tools: List[str] = None
+        self, name: str, description: str, prompt: str, tools: list[str] = None
     ):
         self.name = name
         self.description = description
@@ -89,21 +94,31 @@ class SubAgent:
 
 
 class TaskAgent:
-    def __init__(self, tools: List[str], instructions: str, subagents: List[SubAgent], verbose: bool = True):
+    def __init__(
+        self,
+        tools: list[str],
+        instructions: str,
+        subagents: list[SubAgent],
+        verbose: bool = True,
+    ):
         self.agents = {}
         self.verbose = verbose
         self.setup_agents(tools, instructions, subagents)
 
     def setup_agents(
-        self, tools: List[str], instructions: str, subagents: List[SubAgent]
+        self, tools: list[str], instructions: str, subagents: list[SubAgent]
     ):
         # General purpose agent
-        self.agents["general-purpose"] = Agent(tools, instructions, name="MainAgent", verbose=self.verbose)
+        self.agents["general-purpose"] = Agent(
+            tools, instructions, name="MainAgent", verbose=self.verbose
+        )
 
         # Custom subagents
         for subagent in subagents:
             agent_tools = subagent.tools if subagent.tools else tools
-            self.agents[subagent.name] = Agent(agent_tools, subagent.prompt, name=subagent.name, verbose=self.verbose)
+            self.agents[subagent.name] = Agent(
+                agent_tools, subagent.prompt, name=subagent.name, verbose=self.verbose
+            )
 
     async def invoke(
         self, description: str, subagent_type: str, state: AgentState
@@ -116,7 +131,9 @@ class TaskAgent:
 
         if self.verbose:
             print(f"\n🔄 [TaskAgent] Handing off to '{subagent_type}' subagent")
-            print(f"📝 [TaskAgent] Task description: {description[:100]}{'...' if len(description) > 100 else ''}")
+            print(
+                f"📝 [TaskAgent] Task description: {description[:100]}{'...' if len(description) > 100 else ''}"
+            )
 
         agent = self.agents[subagent_type]
         new_state = AgentState()
@@ -133,21 +150,27 @@ class TaskAgent:
         # Merge results
         state.files = result.files
         state.messages.extend(result.messages)
-        
+
         if self.verbose:
-            new_files = set(result.files.keys()) - set(state.files.keys()) if hasattr(state, 'files') else set(result.files.keys())
+            new_files = (
+                set(result.files.keys()) - set(state.files.keys())
+                if hasattr(state, "files")
+                else set(result.files.keys())
+            )
             if new_files:
-                print(f"📁 [TaskAgent] Subagent created {len(new_files)} new files: {list(new_files)}")
+                print(
+                    f"📁 [TaskAgent] Subagent created {len(new_files)} new files: {list(new_files)}"
+                )
             print(f"✅ [TaskAgent] Handoff to '{subagent_type}' completed\n")
-        
+
         return state
 
 
 def create_deep_agent(
-    tools: List[Any],
+    tools: list[Any],
     instructions: str,
     model: str = "claude-3-5-haiku-20241022",
-    subagents: List[SubAgent] = None,
+    subagents: list[SubAgent] = None,
     name: str = "DeepAgent",
     verbose: bool = True,
 ) -> Agent:
@@ -155,12 +178,13 @@ def create_deep_agent(
 
     # Collect all tools - use actual functions, not just names
     all_tools = []
-    
+
     # Add built-in tools
-    all_tools.extend([write_todos, invoke_subagent, ls, read_file, write_file, edit_file])
-    
+    all_tools.extend(
+        [write_todos, invoke_subagent, ls, read_file, write_file, edit_file]
+    )
+
     # Add user-provided tools
     all_tools.extend(tools)
-    
-    return Agent(all_tools, instructions, model, name=name, verbose=verbose)
 
+    return Agent(all_tools, instructions, model, name=name, verbose=verbose)

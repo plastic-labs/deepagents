@@ -1,7 +1,6 @@
 import asyncio
 import os
 import sys
-from typing import Dict, List
 
 from dotenv import load_dotenv
 
@@ -19,7 +18,7 @@ _ = load_dotenv()
 
 # Example usage
 @tool(description="Search the internet for information")
-def internet_search(query: str) -> Dict[str, List[str]]:
+def internet_search(query: str) -> dict[str, list[str]]:
     """Search the internet"""
     return {"results": [f"Found results for {query}"]}
 

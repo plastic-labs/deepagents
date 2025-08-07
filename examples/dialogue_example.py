@@ -1,7 +1,6 @@
 import asyncio
 import os
 import sys
-from typing import Dict, List
 
 from dotenv import load_dotenv
 
@@ -19,14 +18,14 @@ _ = load_dotenv()
 
 # Enhanced tools with logging
 @tool(description="Search the internet for information")
-def internet_search(query: str) -> Dict[str, List[str]]:
+def internet_search(query: str) -> dict[str, list[str]]:
     """Search the internet"""
     print(f"🔍 [Tool] Performing web search for: {query}")
     return {"results": [f"Found detailed information about {query}"]}
 
 
 @tool(description="Analyze data and provide insights")
-def data_analysis(data: str) -> Dict[str, str]:
+def data_analysis(data: str) -> dict[str, str]:
     """Analyze provided data"""
     print(f"📊 [Tool] Analyzing data: {data[:50]}{'...' if len(data) > 50 else ''}")
     return {"analysis": f"Analysis of {data}: Key insights and patterns found"}
