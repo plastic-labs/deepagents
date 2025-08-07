@@ -10,8 +10,9 @@ project_root = os.path.join(script_dir, "..")
 sys.path.insert(0, project_root)
 
 from src import AgentState, SubAgent, create_deep_agent  # noqa: E402
-from src.tools import tool  # noqa: E402
+from src.tool_registry import tool  # noqa: E402
 from src.tools.internet_search import internet_search  # noqa: E402
+from src.tools.write_file import write_file  # noqa: E402
 
 # Load environment variables
 _ = load_dotenv()
@@ -22,21 +23,6 @@ def data_analysis(data: str) -> dict[str, str]:
     """Analyze provided data"""
     print(f"📊 [Tool] Analyzing data: {data[:50]}{'...' if len(data) > 50 else ''}")
     return {"analysis": f"Analysis of {data}: Key insights and patterns found"}
-
-
-@tool(description="Write content directly to filesystem")
-def write_to_filesystem(filename: str, content: str) -> str:
-    """Write content directly to a file on the filesystem"""
-    try:
-        os.makedirs("agent_output", exist_ok=True)
-        with open(f"agent_output/{filename}", "w", encoding="utf-8") as f:
-            f.write(content)
-        print(f"💾 [Tool] Saved {len(content)} characters to agent_output/{filename}")
-        return (
-            f"Successfully wrote {len(content)} characters to agent_output/{filename}"
-        )
-    except Exception as e:
-        return f"Error writing to agent_output/{filename}: {str(e)}"
 
 
 # Create specialized subagents
@@ -108,7 +94,7 @@ async def main():
 
     # Create the main coordinator agent
     coordinator = create_deep_agent(
-        tools=[internet_search, data_analysis, write_to_filesystem],
+        tools=[internet_search, data_analysis, write_file],
         instructions=coordinator_instructions,
         subagents=[researcher, analyst, writer],
         name="Coordinator",

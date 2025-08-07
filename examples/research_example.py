@@ -59,10 +59,6 @@ When you think you have enough information to write a final report, write it to 
 
 You can call the critique-agent to get a critique of the final report. After that (if needed) you can do more research and edit the `final_report.md`.
 
-You have two file writing options:
-1. Use `write_file` for internal state (files stay in memory)
-2. Use `write_to_filesystem` to save files directly to disk immediately
-
 Write a comprehensive report with proper structure, detailed analysis, and source references."""
 
 
