@@ -12,7 +12,6 @@ sys.path.insert(0, project_root)
 from src import AgentState, SubAgent, create_deep_agent  # noqa: E402
 from src.tool_registry import tool  # noqa: E402
 from src.tools.internet_search import internet_search  # noqa: E402
-from src.tools.write_file import write_file  # noqa: E402
 
 # Load environment variables
 _ = load_dotenv()
@@ -94,7 +93,7 @@ async def main():
 
     # Create the main coordinator agent
     coordinator = create_deep_agent(
-        tools=[internet_search, data_analysis, write_file],
+        tools=[internet_search, data_analysis],
         instructions=coordinator_instructions,
         subagents=[researcher, analyst, writer],
         name="Coordinator",
