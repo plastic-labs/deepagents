@@ -10,17 +10,10 @@ project_root = os.path.join(script_dir, "..")
 sys.path.insert(0, project_root)
 
 from src import AgentState, create_deep_agent  # noqa: E402
-from src.tools import tool  # noqa: E402
+from src.tools.internet_search import internet_search  # noqa: E402
 
 # Load environment variables
 _ = load_dotenv()
-
-
-# Example usage
-@tool(description="Search the internet for information")
-def internet_search(query: str) -> dict[str, list[str]]:
-    """Search the internet"""
-    return {"results": [f"Found results for {query}"]}
 
 
 async def main():

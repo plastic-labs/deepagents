@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 from .llm import LLMClient
 from .state import AgentState
-from .tools import registry
+from .tool_registry import registry
 
 
 class SubAgent:

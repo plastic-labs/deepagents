@@ -2,7 +2,10 @@ from typing import Any
 
 from .agent import Agent
 from .state import AgentState
-from .tools import tool
+from .tool_registry import tool
+from .tools.ls import ls
+from .tools.read_file import read_file
+from .tools.write_file import write_file
 
 
 # Built-in tools
@@ -21,65 +24,6 @@ def invoke_subagent(
     return {
         "message": f"Subagent {subagent_type} invoked with task: {task_description}"
     }
-
-
-@tool(description="list all files")
-def ls(state) -> list[str]:
-    return list(state.files.keys())
-
-
-@tool(description="Read file contents")
-def read_file(file_path: str, offset: int = 0, limit: int = 2000, state=None) -> str:
-    if file_path not in state.files:
-        return f"Error: File '{file_path}' not found"
-
-    content = state.files[file_path]
-    lines = content.splitlines()
-
-    start_idx = offset
-    end_idx = min(start_idx + limit, len(lines))
-
-    if start_idx >= len(lines):
-        return f"Error: Line offset {offset} exceeds file length ({len(lines)} lines)"
-
-    result_lines = []
-    for i in range(start_idx, end_idx):
-        result_lines.append(f"{i + 1:6d}\t{lines[i]}")
-
-    return "\n".join(result_lines)
-
-
-@tool(description="Write to a file")
-def write_file(file_path: str, content: str, state=None) -> dict[str, dict[str, str]]:
-    state.files[file_path] = content
-    return {"files": state.files}
-
-
-@tool(description="Edit file contents")
-def edit_file(
-    file_path: str,
-    old_string: str,
-    new_string: str,
-    replace_all: bool = False,
-    state=None,
-) -> dict[str, dict[str, str]]:
-    if file_path not in state.files:
-        return f"Error: File '{file_path}' not found"
-
-    content = state.files[file_path]
-
-    if not replace_all:
-        occurrences = content.count(old_string)
-        if occurrences > 1:
-            return f"Error: String appears {occurrences} times. Use replace_all=True or provide more context"
-
-    new_content = (
-        content.replace(old_string, new_string)
-        if replace_all
-        else content.replace(old_string, new_string, 1)
-    )
-    state.files[file_path] = new_content
-    return {"files": state.files}
 
 
 # Subagent support
@@ -181,7 +125,13 @@ def create_deep_agent(
 
     # Add built-in tools
     all_tools.extend(
-        [write_todos, invoke_subagent, ls, read_file, write_file, edit_file]
+        [
+            write_todos,
+            invoke_subagent,
+            ls,
+            read_file,
+            write_file,
+        ]
     )
 
     # Add user-provided tools

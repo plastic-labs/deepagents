@@ -11,17 +11,10 @@ sys.path.insert(0, project_root)
 
 from src import AgentState, create_deep_agent  # noqa: E402
 from src.tools import tool  # noqa: E402
+from src.tools.internet_search import internet_search  # noqa: E402
 
 # Load environment variables
 load_dotenv()
-
-
-# Register tools properly
-@tool(description="Search the internet")
-def internet_search(query: str) -> dict:
-    """Search the internet using Tavily"""
-    print(f"🔍 Searching for: {query}")
-    return {"results": [f"Found current information about: {query}"]}
 
 
 @tool(description="Get current date and time")

@@ -1,7 +1,6 @@
 import asyncio
 import os
 import sys
-from typing import Literal
 
 from dotenv import load_dotenv
 
@@ -11,45 +10,10 @@ project_root = os.path.join(script_dir, "..")
 sys.path.insert(0, project_root)
 
 from src import AgentState, SubAgent, create_deep_agent  # noqa: E402
+from src.tools.internet_search import internet_search  # noqa: E402
 
 # Load environment variables
 load_dotenv()
-
-
-# Search tool implementation
-def internet_search(
-    query: str,
-    max_results: int = 5,
-    topic: Literal["general", "news", "finance"] = "general",
-    include_raw_content: bool = False,
-):
-    """Run a web search"""
-    print(f"🔍 Searching: {query}")
-    # Mock implementation - replace with actual Tavily client
-    return {
-        "results": [
-            {
-                "title": f"Result for {query}",
-                "content": f"Detailed information about {query}",
-            }
-        ]
-    }
-
-
-# Optional: Direct filesystem tool (if you want files saved immediately)
-from src.tools import tool  # noqa: E402
-
-
-@tool(description="Write content directly to filesystem")
-def write_to_filesystem(filename: str, content: str) -> str:
-    """Write content directly to a file on the filesystem"""
-    try:
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(content)
-        return f"Successfully wrote {len(content)} characters to {filename}"
-    except Exception as e:
-        return f"Error writing to {filename}: {str(e)}"
-
 
 # Research sub-agent prompt
 sub_research_prompt = """You are a dedicated researcher. Your job is to conduct research based on the users questions.
@@ -111,7 +75,7 @@ async def main():
 
     # Create the agent with subagents and enhanced dialogue logging
     agent = create_deep_agent(
-        [internet_search, write_to_filesystem],
+        [internet_search],
         research_instructions,
         subagents=[research_sub_agent, critique_sub_agent],
         name="ResearchCoordinator",
@@ -130,21 +94,6 @@ async def main():
 
     print("\n=== Research Complete ===")
 
-    # Save files from agent state to actual filesystem
-    for filename, content in result.files.items():
-        try:
-            with open(filename, "w", encoding="utf-8") as f:
-                f.write(content)
-            print(f"✅ Saved {filename} to filesystem")
-        except Exception as e:
-            print(f"❌ Failed to save {filename}: {e}")
-
-    # Show final state
-    if "final_report.md" in result.files:
-        print("\n📄 Report Preview:")
-        print(result.files["final_report.md"][:500] + "...")
-
-    print(f"\n📁 Files created in agent state: {list(result.files.keys())}")
     print(f"✅ Todos completed: {[todo.content for todo in result.todos]}")
 
 

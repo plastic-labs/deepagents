@@ -11,17 +11,10 @@ sys.path.insert(0, project_root)
 
 from src import AgentState, SubAgent, create_deep_agent  # noqa: E402
 from src.tools import tool  # noqa: E402
+from src.tools.internet_search import internet_search  # noqa: E402
 
 # Load environment variables
 _ = load_dotenv()
-
-
-# Enhanced tools with logging
-@tool(description="Search the internet for information")
-def internet_search(query: str) -> dict[str, list[str]]:
-    """Search the internet"""
-    print(f"🔍 [Tool] Performing web search for: {query}")
-    return {"results": [f"Found detailed information about {query}"]}
 
 
 @tool(description="Analyze data and provide insights")
@@ -35,12 +28,15 @@ def data_analysis(data: str) -> dict[str, str]:
 def write_to_filesystem(filename: str, content: str) -> str:
     """Write content directly to a file on the filesystem"""
     try:
-        with open(filename, "w", encoding="utf-8") as f:
+        os.makedirs("agent_output", exist_ok=True)
+        with open(f"agent_output/{filename}", "w", encoding="utf-8") as f:
             f.write(content)
-        print(f"💾 [Tool] Saved {len(content)} characters to {filename}")
-        return f"Successfully wrote {len(content)} characters to {filename}"
+        print(f"💾 [Tool] Saved {len(content)} characters to agent_output/{filename}")
+        return (
+            f"Successfully wrote {len(content)} characters to agent_output/{filename}"
+        )
     except Exception as e:
-        return f"Error writing to {filename}: {str(e)}"
+        return f"Error writing to agent_output/{filename}: {str(e)}"
 
 
 # Create specialized subagents
@@ -139,17 +135,6 @@ async def main():
     print("\n" + "=" * 50)
     print("📊 FINAL RESULTS")
     print("=" * 50)
-
-    # Save files from agent state to filesystem
-    if result.files:
-        print(f"📁 Files created in agent memory: {list(result.files.keys())}")
-        for filename, content in result.files.items():
-            try:
-                with open(filename, "w", encoding="utf-8") as f:
-                    f.write(content)
-                print(f"✅ Saved {filename} to filesystem ({len(content)} characters)")
-            except Exception as e:
-                print(f"❌ Failed to save {filename}: {e}")
 
     # Show conversation summary
     print(f"\n💬 Total conversation turns: {len(result.messages)}")
