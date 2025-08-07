@@ -100,11 +100,13 @@ async def main():
         print("Please set ANTHROPIC_API_KEY in your .env file")
         return
     
-    # Create the agent with subagents
+    # Create the agent with subagents and enhanced dialogue logging
     agent = create_deep_agent(
         [internet_search, write_to_filesystem],
         research_instructions,
-        subagents=[research_sub_agent, critique_sub_agent]
+        subagents=[research_sub_agent, critique_sub_agent],
+        name="ResearchCoordinator",
+        verbose=True  # Enable enhanced dialogue logging
     )
     
     # Create state

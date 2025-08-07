@@ -28,10 +28,12 @@ async def main():
         print("Please set ANTHROPIC_API_KEY in your .env file")
         return
     
-    # Create agent
+    # Create agent with enhanced dialogue logging
     agent = create_deep_agent(
         [internet_search],
-        "You are a helpful research assistant."
+        "You are a helpful research assistant.",
+        name="ResearchAssistant",
+        verbose=True  # Enable enhanced dialogue logging
     )
     
     # Create state

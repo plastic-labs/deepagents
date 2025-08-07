@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Dict, Any, Optional
 import json
 from .state import AgentState
 from .tools import registry
@@ -7,23 +7,35 @@ from .llm import LLMClient
 
 class SubAgent:
     def __init__(
-        self, name: str, description: str, prompt: str, tools: List[str] = None
+        self, name: str, description: str, prompt: str, tools: Optional[List[str]] = None
     ):
-        self.name = name
-        self.description = description
-        self.prompt = prompt
-        self.tools = tools or []
+        self.name: str = name
+        self.description: str = description
+        self.prompt: str = prompt
+        self.tools: List[str] = tools or []
 
 
 class ConversationManager:
-    def __init__(self, model: str = "claude-3-5-haiku-20241022"):
-        self.llm = LLMClient(model)
-        self.max_iterations = 50
+    def __init__(self, model: str = "claude-3-5-haiku-20241022", agent_name: str = "Agent", verbose: bool = True):
+        self.llm: LLMClient = LLMClient(model)
+        self.max_iterations: int = 50
+        self.agent_name: str = agent_name
+        self.verbose: bool = verbose
+
+    def _log(self, message: str, level: str = "INFO"):
+        """Log agent dialogue with formatting"""
+        if self.verbose:
+            prefix = f"🤖 [{self.agent_name}]" if level == "INFO" else f"🔧 [{self.agent_name}]"
+            print(f"{prefix} {message}")
 
     async def invoke(
         self, state: AgentState, tool_names: List[str], system_prompt: str
     ) -> AgentState:
         messages = state.get_messages()
+        
+        self._log(f"Starting conversation with {len(tool_names)} available tools")
+        if tool_names:
+            self._log(f"Available tools: {', '.join(tool_names)}")
 
         tool_schemas = []
         for tool_name in tool_names:
@@ -39,35 +51,56 @@ class ConversationManager:
             )
 
         for iteration in range(self.max_iterations):
+            self._log(f"Iteration {iteration + 1}/{self.max_iterations} - Thinking...")
             response = await self.llm.invoke(messages, tool_schemas, system_prompt)
 
             if response.get("content"):
                 content = response["content"]
                 if isinstance(content, list):
+                    text_responses = []
+                    tool_calls = []
+                    
                     for item in content:
                         if item.get("type") == "text":
+                            text_responses.append(item["text"])
                             state.add_message("assistant", item["text"])
                         elif item.get("type") == "tool_use":
                             tool_name = item["name"]
                             tool_args = item["input"]
-                            
-                            try:
-                                result = registry.execute(tool_name, tool_args, state)
-                                messages.append(
-                                    {
-                                        "role": "user",
-                                        "content": f"Tool {tool_name} returned: {json.dumps(result, indent=2)}",
-                                    }
-                                )
-                            except Exception as e:
-                                messages.append(
-                                    {
-                                        "role": "user",
-                                        "content": f"Error executing {tool_name}: {str(e)}",
-                                    }
-                                )
+                            tool_calls.append((tool_name, tool_args))
+                    
+                    # Log agent response
+                    if text_responses:
+                        response_preview = " ".join(text_responses)[:100] + "..." if len(" ".join(text_responses)) > 100 else " ".join(text_responses)
+                        self._log(f"Response: {response_preview}")
+                    
+                    # Log and execute tool calls
+                    for tool_name, tool_args in tool_calls:
+                        self._log(f"Using tool: {tool_name} with args: {tool_args}", "TOOL")
+                        
+                        try:
+                            result = registry.execute(tool_name, tool_args, state)
+                            result_preview = str(result)[:150] + "..." if len(str(result)) > 150 else str(result)
+                            self._log(f"Tool {tool_name} result: {result_preview}", "TOOL")
+                            messages.append(
+                                {
+                                    "role": "user",
+                                    "content": f"Tool {tool_name} returned: {json.dumps(result, indent=2)}",
+                                }
+                            )
+                        except Exception as e:
+                            self._log(f"Tool {tool_name} failed: {str(e)}", "TOOL")
+                            messages.append(
+                                {
+                                    "role": "user",
+                                    "content": f"Error executing {tool_name}: {str(e)}",
+                                }
+                            )
                 else:
-                    state.add_message("assistant", str(content))
+                    response_text = str(content)
+                    response_preview = response_text[:100] + "..." if len(response_text) > 100 else response_text
+                    self._log(f"Final response: {response_preview}")
+                    state.add_message("assistant", response_text)
                     break
 
             if not response.get("content") or not any(
@@ -75,6 +108,7 @@ class ConversationManager:
             ):
                 break
 
+        self._log(f"Conversation completed after {iteration + 1} iterations")
         return state
 
 
@@ -84,10 +118,13 @@ class Agent:
         tools: List[Any],
         instructions: str,
         model: str = "claude-3-5-haiku-20241022",
+        name: str = "Agent",
+        verbose: bool = True,
     ):
-        self.tools = tools
-        self.instructions = instructions
-        self.conversation = ConversationManager(model)
+        self.tools: List[Any] = tools
+        self.instructions: str = instructions
+        self.name: str = name
+        self.conversation: ConversationManager = ConversationManager(model, agent_name=name, verbose=verbose)
     
     async def invoke(self, state: AgentState) -> AgentState:
         # Register tools with registry
