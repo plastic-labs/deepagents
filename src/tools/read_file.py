@@ -1,13 +1,9 @@
 from src.tool_registry import tool
 
 
-def prepend(file_path: str) -> str:
-    return f"agent_output/{file_path}"
-
-
 @tool(description="Read file contents")
-def read_file(file_path: str) -> str:
+def read_file(filename: str) -> str:
     """Read file contents"""
-    with open(prepend(file_path), "r", encoding="utf-8") as f:
+    with open(f"agent_output/{filename}", "r", encoding="utf-8") as f:
         content = f.read()
     return content
