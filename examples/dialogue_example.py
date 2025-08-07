@@ -61,7 +61,7 @@ writer = SubAgent(
 4. Save final content to files when appropriate
 
 Focus on creating high-quality, polished written work.""",
-    tools=["write_to_filesystem"],
+    tools=["write_file"],
 )
 
 # Main coordinator instructions

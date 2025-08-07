@@ -23,7 +23,7 @@ class SubAgent:
 class ConversationManager:
     def __init__(
         self,
-        model: str = "claude-3-5-haiku-20241022",
+        model: str = "claude-4-sonnet-20250514",
         agent_name: str = "Agent",
         verbose: bool = True,
     ):
@@ -147,9 +147,10 @@ class Agent:
         self,
         tools: list[Any],
         instructions: str,
-        model: str = "claude-3-5-haiku-20241022",
+        model: str = "claude-4-sonnet-20250514",
         name: str = "Agent",
         verbose: bool = True,
+        subagents: list[SubAgent] = None,
     ):
         self.tools: list[Any] = tools
         self.instructions: str = instructions
@@ -157,6 +158,7 @@ class Agent:
         self.conversation: ConversationManager = ConversationManager(
             model, agent_name=name, verbose=verbose
         )
+        self.subagents: list[SubAgent] = subagents or []
 
     async def invoke(self, state: AgentState) -> AgentState:
         # Register tools with registry

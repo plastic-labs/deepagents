@@ -8,7 +8,7 @@ load_dotenv()
 
 
 class AnthropicClient:
-    def __init__(self, api_key: str = None, model: str = "claude-3-sonnet-20240229"):
+    def __init__(self, api_key: str = None, model: str = "claude-4-sonnet-20250514"):
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY not found in environment or .env file")
@@ -85,7 +85,7 @@ class AnthropicClient:
 
 
 class LLMClient:
-    def __init__(self, model: str = "claude-3-sonnet-20240229"):
+    def __init__(self, model: str = "claude-4-sonnet-20250514"):
         self.client = AnthropicClient(model=model)
 
     async def invoke(

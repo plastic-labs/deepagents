@@ -14,18 +14,6 @@ def write_todos(todos: list[dict[str, str]]) -> dict[str, list[dict[str, str]]]:
     return {"todos": todos}
 
 
-@tool(description="Invoke a specialized subagent to handle specific tasks")
-def invoke_subagent(
-    subagent_type: str, task_description: str, state=None
-) -> dict[str, str]:
-    """Invoke a specialized subagent with a specific task"""
-    # This tool will be enhanced when subagents are available
-    # For now, it's a placeholder that gets replaced in actual implementations
-    return {
-        "message": f"Subagent {subagent_type} invoked with task: {task_description}"
-    }
-
-
 # Subagent support
 class SubAgent:
     def __init__(
@@ -113,7 +101,7 @@ class TaskAgent:
 def create_deep_agent(
     tools: list[Any],
     instructions: str,
-    model: str = "claude-3-5-haiku-20241022",
+    model: str = "claude-4-sonnet-20250514",
     subagents: list[SubAgent] = None,
     name: str = "DeepAgent",
     verbose: bool = True,
@@ -127,7 +115,6 @@ def create_deep_agent(
     all_tools.extend(
         [
             write_todos,
-            invoke_subagent,
             ls,
             read_file,
             write_file,
@@ -137,4 +124,6 @@ def create_deep_agent(
     # Add user-provided tools
     all_tools.extend(tools)
 
-    return Agent(all_tools, instructions, model, name=name, verbose=verbose)
+    return Agent(
+        all_tools, instructions, model, name=name, verbose=verbose, subagents=subagents
+    )
