@@ -71,18 +71,12 @@ class ToolRegistry:
     def get_schema(self, name: str) -> dict[str, Any]:
         return self.schemas.get(name, {})
 
-    def execute(self, name: str, arguments: dict[str, Any], state=None) -> Any:
+    def execute(self, name: str, arguments: dict[str, Any]) -> Any:
         if name not in self.tools:
             raise ValueError(f"Tool {name} not found")
 
         func = self.tools[name]
-        sig = inspect.signature(func)
-
-        kwargs = arguments.copy()
-        if "state" in sig.parameters:
-            kwargs["state"] = state
-
-        return func(**kwargs)
+        return func(**arguments)
 
 
 registry = ToolRegistry()

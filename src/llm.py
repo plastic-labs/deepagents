@@ -2,6 +2,7 @@ import os
 from typing import Any, AsyncGenerator
 
 import aiohttp
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -15,7 +16,7 @@ class AnthropicClient:
         self.model = model
         self.base_url = "https://api.anthropic.com/v1"
 
-    async def chat(
+    def chat(
         self,
         messages: list[dict[str, str]],
         tools: list[dict[str, Any]] = None,
@@ -36,15 +37,12 @@ class AnthropicClient:
         if system:
             payload["system"] = system
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.base_url}/messages", headers=headers, json=payload
-            ) as response:
-                if response.status != 200:
-                    raise Exception(
-                        f"API Error: {response.status} {await response.text()}"
-                    )
-                return await response.json()
+        response = requests.post(
+            f"{self.base_url}/messages", headers=headers, json=payload
+        )
+        if response.status_code != 200:
+            raise Exception(f"API Error: {response.status_code} {response.text}")
+        return response.json()
 
     async def stream_chat(
         self,
@@ -88,13 +86,13 @@ class LLMClient:
     def __init__(self, model: str = "claude-4-sonnet-20250514"):
         self.client = AnthropicClient(model=model)
 
-    async def invoke(
+    def invoke(
         self,
         messages: list[dict[str, str]],
         tools: list[dict[str, Any]] = None,
         system: str = None,
     ) -> dict[str, Any]:
-        return await self.client.chat(messages, tools, system)
+        return self.client.chat(messages, tools, system)
 
     async def stream(
         self, messages: list[dict[str, str]], tools: list[dict[str, Any]] = None

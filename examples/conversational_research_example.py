@@ -1,7 +1,9 @@
 import asyncio
+import uuid
 import os
 import sys
-from typing import Literal, Optional
+from typing import Literal
+from honcho import Honcho
 
 from dotenv import load_dotenv
 
@@ -11,49 +13,25 @@ project_root = os.path.join(script_dir, "..")
 sys.path.insert(0, project_root)
 
 # Import existing functionality from the codebase
-from src import AgentState, SubAgent, create_deep_agent  # noqa: E402
+from src import SubAgent  # noqa: E402
 from src.agent import Agent  # noqa: E402
 from src.tool_registry import tool  # noqa: E402
 
 # Import existing research tools
 from src.tools.internet_search import internet_search  # noqa: E402
+from src.tools.ls import ls
+from src.tools.read_file import read_file
+from src.tools.write_file import write_file
 
 # Load environment variables
 _ = load_dotenv()
 
+session_id = str(uuid.uuid4())
+
 
 # Simple conversation manager for user interface (new functionality only)
-class ConversationInterface:
-    """Lightweight interface for user interaction - only what's not in existing codebase"""
-
-    async def get_user_input(self, prompt: str = "") -> str:
-        """Get input from user with optional prompt"""
-        if prompt:
-            print(f"\n🤖 {prompt}")
-        print("👤 You: ", end="", flush=True)
-
-        loop = asyncio.get_event_loop()
-        user_input = await loop.run_in_executor(None, input)
-        return user_input.strip()
-
-    def display_agent_message(self, message: str, message_type: str = "info"):
-        """Display agent message to user"""
-        icon = (
-            "🤖"
-            if message_type == "info"
-            else "🔍"
-            if message_type == "research"
-            else "📊"
-        )
-        print(f"\n{icon} {message}")
-
-
-# Global interface instance
-conversation_interface = ConversationInterface()
-
-
 @tool(description="Invoke a specialized subagent to handle specific tasks")
-async def invoke_subagent(subagent_type: str, task_description: str) -> dict[str, str]:
+def invoke_subagent(subagent_type: str, task_description: str) -> dict[str, str]:
     """Invoke a specialized subagent with a specific task"""
     subagent_dict = {
         "conversational-researcher": conversational_researcher,
@@ -65,8 +43,9 @@ async def invoke_subagent(subagent_type: str, task_description: str) -> dict[str
         instructions=subagent.prompt + f"\n\nTask: {task_description}",
         name=subagent_type,
         verbose=True,
+        session_id=session_id,
     )
-    return await agent.invoke(AgentState())
+    agent.invoke()
 
 
 # NEW FUNCTIONALITY: Conversational tool for user interaction
@@ -76,7 +55,7 @@ async def invoke_subagent(subagent_type: str, task_description: str) -> dict[str
 def communicate_with_user(
     message: str,
     message_type: Literal["question", "update", "finding", "info"] = "info",
-    wait_for_response: bool = True,
+    # wait_for_response: bool = True,
 ) -> dict[str, str]:
     """
     Communicate with the user during the research process.
@@ -89,14 +68,10 @@ def communicate_with_user(
     Returns:
         Dictionary containing user's response if wait_for_response=True
     """
-    conversation_interface.display_agent_message(message, message_type)
-
-    if wait_for_response:
-        print("👤 You: ", end="", flush=True)
-        user_response = input().strip()
-        return {"user_response": user_response}
-    else:
-        return {"status": "message_sent"}
+    print("🤖 " + message)
+    print("👤 You: ", end="", flush=True)
+    user_response = input().strip()
+    return {"user_response": user_response}
 
 
 # Create specialized research subagents using existing + new tools
@@ -117,7 +92,7 @@ Your workflow should be:
 4. Continue the conversation based on user interests and questions
 
 Always be conversational, helpful, and thorough. Think of yourself as a research assistant that the user can talk to throughout the process.""",
-    tools=["communicate_with_user", "internet_search"],
+    tools=[communicate_with_user, internet_search],
 )
 
 report_writer = SubAgent(
@@ -134,8 +109,10 @@ Focus on creating well-structured, professional reports that are easy to read an
 
 When you think you have enough information to write a final report, write it to `final_report.md` using write_file.""",
     tools=[
-        "write_file",
-        "communicate_with_user",
+        write_file,
+        communicate_with_user,
+        ls,
+        read_file,
     ],  # Use existing file tools
 )
 
@@ -162,118 +139,43 @@ Key principles:
 
 Remember: This is a conversation, not just a one-time task. The user may ask follow-up questions, request different research directions, or want to dive deeper into specific areas.
 
-You must invoke sub-agents to complete the research process."""
+You must invoke sub-agents to complete the research process.
+
+You need to invoke a sub-agent or the process will end and you will die. invoke subagents to stay alive.
+"""
 
 
-class ConversationalResearchAgent:
-    """Main class for managing the conversational research experience"""
-
-    def __init__(self):
-        from src.agent import Agent  # noqa: E402
-
-        self.agent: Optional[Agent] = None
-        self.state: AgentState = AgentState()
-        self.interface: ConversationInterface = ConversationInterface()
-
-    async def initialize(self):
-        """Initialize the research agent"""
-        # Check for API key
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
-            print("❌ Please set ANTHROPIC_API_KEY in your .env file")
-            return False
-
-        # Create the main coordinator agent using existing tools + new conversational functionality
-        self.agent = create_deep_agent(
-            tools=[
-                # NEW: Conversational functionality
-                communicate_with_user,
-                # EXISTING: Research tools
-                internet_search,
-                invoke_subagent,
-                # NOTE: create_deep_agent automatically includes built-in tools:
-                # write_todos, invoke_subagent, ls, read_file, write_file
-                # (write_file provides filesystem writing functionality)
-            ],
-            instructions=research_coordinator_instructions,
-            subagents=[conversational_researcher, report_writer],
-            name="ResearchCoordinator",
-            verbose=True,
-        )
-
-        return True
-
-    async def start_conversation(self):
-        """Start the main conversation loop"""
-        print("🚀 Welcome to Conversational Research Assistant!")
-        print("=" * 60)
-        print(
-            "I'm here to help you research any topic through an interactive conversation."
-        )
-        print(
-            "You can ask questions, request clarifications, and guide the research direction."
-        )
-        print("Type 'quit', 'exit', or 'bye' to end our conversation.\n")
-
-        # Get initial user query
-        initial_query = await self.interface.get_user_input(
-            "What would you like me to research today?"
-        )
-
-        if initial_query.lower() in ["quit", "exit", "bye"]:
-            print("👋 Goodbye! Feel free to come back anytime for more research!")
-            return
-
-        # Start the conversation with the agent
-        self.state.add_message("user", initial_query)
-
-        try:
-            # Run the agent with the initial query
-            if self.agent is None:
-                print("❌ Agent not initialized properly")
-                return
-            result = await self.agent.invoke(self.state)
-
-            print("\n" + "=" * 60)
-            print("🎯 Research Session Complete!")
-
-            # Show final summary
-            if result.files:
-                print(f"📁 Files created: {list(result.files.keys())}")
-
-                # Save any files to disk
-                for filename, content in result.files.items():
-                    try:
-                        with open(filename, "w", encoding="utf-8") as f:
-                            _ = f.write(content)
-                        print(f"💾 Saved {filename} to disk")
-                    except Exception as e:
-                        print(f"❌ Failed to save {filename}: {e}")
-
-            print(f"💬 Total conversation turns: {len(result.messages)}")
-            print("\n👋 Thank you for using the Conversational Research Assistant!")
-
-        except KeyboardInterrupt:
-            print("\n\n👋 Research session interrupted. Goodbye!")
-        except Exception as e:
-            print(f"\n❌ An error occurred: {e}")
-            print("Please try again or contact support if the issue persists.")
-
-
-async def main():
+def main():
     """Main function to run the conversational research agent"""
-    research_agent = ConversationalResearchAgent()
+    honcho_client = Honcho(environment="production", workspace_id="deepagents")
 
-    # Initialize the agent
-    if await research_agent.initialize():
-        # Start the conversation loop
-        await research_agent.start_conversation()
-    else:
-        print("❌ Failed to initialize the research agent")
+    honcho_client.peer("tool-caller", config={"observe_me": False})
+
+    # Collect all tools - use actual functions, not just names
+    tools = [
+        # communicate_with_user,
+        # internet_search,
+        invoke_subagent,
+        # ls,
+        # read_file,
+        # write_file,
+    ]
+
+    # Add user-provided tools
+    agent = Agent(
+        tools=tools,
+        instructions=research_coordinator_instructions,
+        subagents=[conversational_researcher, report_writer],
+        name="ResearchCoordinator",
+        verbose=True,
+        session_id=session_id,
+    )
+
+    agent.invoke()
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main()
     except KeyboardInterrupt:
         print("\n👋 Goodbye!")

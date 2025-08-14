@@ -1,4 +1,5 @@
 from typing import Any
+import uuid
 
 from .agent import Agent, SubAgent
 from .tool_registry import tool
@@ -20,6 +21,7 @@ def create_deep_agent(
     subagents: list[SubAgent] = None,
     name: str = "DeepAgent",
     verbose: bool = True,
+    session_id: str = str(uuid.uuid4()),
 ) -> Agent:
     """Create a deep agent with built-in tools and optional subagents."""
 
@@ -40,5 +42,11 @@ def create_deep_agent(
     all_tools.extend(tools)
 
     return Agent(
-        all_tools, instructions, model, name=name, verbose=verbose, subagents=subagents
+        all_tools,
+        instructions,
+        model,
+        name=name,
+        verbose=verbose,
+        subagents=subagents,
+        session_id=session_id,
     )

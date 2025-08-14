@@ -18,11 +18,11 @@ from src.tools.internet_search import internet_search  # noqa: E402
 _ = load_dotenv()
 
 
-@tool(description="Analyze data and provide insights")
-def data_analysis(data: str) -> dict[str, str]:
-    """Analyze provided data"""
-    print(f"📊 [Tool] Analyzing data: {data[:50]}{'...' if len(data) > 50 else ''}")
-    return {"analysis": f"Analysis of {data}: Key insights and patterns found"}
+# @tool(description="Analyze data and provide insights")
+# def data_analysis(data: str) -> dict[str, str]:
+#     """Analyze provided data"""
+#     print(f"📊 [Tool] Analyzing data: {data[:50]}{'...' if len(data) > 50 else ''}")
+#     return {"analysis": f"Analysis of {data}: Key insights and patterns found"}
 
 
 # Create specialized subagents
@@ -94,7 +94,7 @@ async def main():
 
     # Create the main coordinator agent
     coordinator = create_deep_agent(
-        tools=[internet_search, data_analysis],
+        tools=[internet_search],
         instructions=coordinator_instructions,
         subagents=[researcher, analyst, writer],
         name="Coordinator",

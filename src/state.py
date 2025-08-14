@@ -3,18 +3,7 @@
 from typing import Optional
 
 from honcho import Honcho
-
-
-# class TodoStatus(Enum):
-#     PENDING = "pending"
-#     IN_PROGRESS = "in_progress"
-#     COMPLETED = "completed"
-#
-#
-# @dataclass
-# class Todo:
-#     content: str
-#     status: TodoStatus = TodoStatus.PENDING
+from honcho.session import MessageCreateParam
 
 
 class AgentState:
@@ -23,7 +12,12 @@ class AgentState:
     peer representations, and session management.
     """
 
-    def __init__(self, session_id: str, workspace_id: str = "deepagents"):
+    def __init__(
+        self,
+        peer_id: str,
+        session_id: str,
+        workspace_id: str = "deepagents",
+    ):
         """
         Initialize AgentState with Honcho integration.
 
@@ -34,22 +28,12 @@ class AgentState:
         self.honcho = Honcho(environment="production", workspace_id=workspace_id)
         self.session_id = session_id
 
-        # Create peers for agent and user
-        self.agent_peer = self.honcho.peer("agent", config={"observe_me": False})
-        self.user_peer = self.honcho.peer("user")
+        self.peer_id = peer_id
 
         # Get or create session
         self.session = self.honcho.session(session_id)
 
-        # Add peers to session
-        self.session.add_peers([self.agent_peer, self.user_peer])
-
-        # Local state for todos (not managed by Honcho)
-        self.todos: list[Todo] = []
-
-    def add_message(
-        self, role: str, content: str, metadata: Optional[dict] = None
-    ) -> None:
+    def add_message(self, peer_name: str, content: str, metadata: dict = {}) -> None:
         """
         Add a message to the conversation session.
 
@@ -58,12 +42,9 @@ class AgentState:
             content: The message content
             metadata: Optional metadata for the message
         """
-        if role == "user":
-            message = self.user_peer.message(content, metadata=metadata or {})
-        else:
-            message = self.agent_peer.message(content, metadata=metadata or {})
-
-        self.session.add_messages([message])
+        self.session.add_messages(
+            [MessageCreateParam(content=content, peer_id=peer_name, metadata=metadata)]
+        )
 
     def get_messages(self) -> list[dict[str, str]]:
         """
@@ -72,8 +53,9 @@ class AgentState:
         Returns:
             List of message dictionaries with role and content
         """
+
         messages = self.session.get_context(summary=False).to_anthropic(
-            assistant=self.agent_peer
+            assistant=self.peer_id
         )
         return messages
 
@@ -91,25 +73,8 @@ class AgentState:
             Response from the agent's knowledge
         """
         if target_peer:
-            return self.agent_peer.chat(query, target=target_peer)
-        return self.agent_peer.chat(query)
-
-    def query_user_knowledge(
-        self, query: str, target_peer: Optional[str] = None
-    ) -> str:
-        """
-        Query the user's knowledge representation.
-
-        Args:
-            query: The natural language query
-            target_peer: Optional target peer to query about
-
-        Returns:
-            Response from the user's knowledge
-        """
-        if target_peer:
-            return self.user_peer.chat(query, target=target_peer)
-        return self.user_peer.chat(query)
+            return self.honcho.peer(self.peer_id).chat(query, target=target_peer)
+        return self.honcho.peer(self.peer_id).chat(query)
 
     def search_conversation(self, query: str) -> list:
         """
@@ -122,37 +87,6 @@ class AgentState:
             List of search results
         """
         return self.session.search(query)
-
-    def add_todo(self, content: str) -> None:
-        """
-        Add a todo item to local state.
-
-        Args:
-            content: The todo content
-        """
-        self.todos.append(Todo(content=content))
-
-    def update_todo_status(self, content: str, status: TodoStatus) -> None:
-        """
-        Update the status of a todo item.
-
-        Args:
-            content: The todo content to match
-            status: The new status
-        """
-        for todo in self.todos:
-            if todo.content == content:
-                todo.status = status
-                break
-
-    def get_todos(self) -> list[Todo]:
-        """
-        Get all todo items.
-
-        Returns:
-            List of Todo objects
-        """
-        return self.todos
 
     def set_session_metadata(self, metadata: dict) -> None:
         """
@@ -172,13 +106,13 @@ class AgentState:
         """
         return self.session.get_metadata()
 
-    def create_new_session(self, session_id: str) -> None:
-        """
-        Create and switch to a new session.
-
-        Args:
-            session_id: The new session identifier
-        """
-        self.session_id = session_id
-        self.session = self.honcho.session(session_id)
-        self.session.add_peers([self.agent_peer, self.user_peer])
+    # def create_new_session(self, session_id: str) -> None:
+    #     """
+    #     Create and switch to a new session.
+    #
+    #     Args:
+    #         session_id: The new session identifier
+    #     """
+    #     self.session_id = session_id
+    #     self.session = self.honcho.session(session_id)
+    #     self.session.add_peers([self.agent_peer, self.user_peer])
