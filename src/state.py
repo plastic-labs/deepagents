@@ -1,20 +1,20 @@
-from dataclasses import dataclass
-from enum import Enum
+# from dataclasses import dataclass
+# from enum import Enum
 from typing import Optional
 
 from honcho import Honcho
 
 
-class TodoStatus(Enum):
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-
-
-@dataclass
-class Todo:
-    content: str
-    status: TodoStatus = TodoStatus.PENDING
+# class TodoStatus(Enum):
+#     PENDING = "pending"
+#     IN_PROGRESS = "in_progress"
+#     COMPLETED = "completed"
+#
+#
+# @dataclass
+# class Todo:
+#     content: str
+#     status: TodoStatus = TodoStatus.PENDING
 
 
 class AgentState:

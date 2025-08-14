@@ -9,7 +9,8 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.join(script_dir, "..")
 sys.path.insert(0, project_root)
 
-from src import AgentState, SubAgent, create_deep_agent  # noqa: E402
+from src import AgentState, create_deep_agent  # noqa: E402
+from src.agent import SubAgent
 from src.tool_registry import tool  # noqa: E402
 from src.tools.internet_search import internet_search  # noqa: E402
 
@@ -101,7 +102,7 @@ async def main():
     )
 
     # Create initial state
-    state = AgentState()
+    state = AgentState(session_id="test-0814")
 
     # Example complex task
     task = """Research the benefits of meditation for productivity, analyze the key findings, 

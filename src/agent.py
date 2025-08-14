@@ -4,6 +4,7 @@ from typing import Any, Optional
 from .llm import LLMClient
 from .state import AgentState
 from .tool_registry import registry
+import uuid
 
 
 class SubAgent:
@@ -151,6 +152,7 @@ class Agent:
         name: str = "Agent",
         verbose: bool = True,
         subagents: list[SubAgent] = None,
+        state: AgentState = None,
     ):
         self.tools: list[Any] = tools
         self.instructions: str = instructions
@@ -159,8 +161,12 @@ class Agent:
             model, agent_name=name, verbose=verbose
         )
         self.subagents: list[SubAgent] = subagents or []
+        if state:
+            self.state = state
+        else:
+            self.conversation.state = AgentState(str(uuid.uuid4()))
 
-    async def invoke(self, state: AgentState) -> AgentState:
+    async def invoke(self):
         # Register tools with registry
         for tool_func in self.tools:
             if callable(tool_func):
