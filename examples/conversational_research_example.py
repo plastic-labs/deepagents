@@ -1,11 +1,10 @@
-import asyncio
-import uuid
 import os
 import sys
+import uuid
 from typing import Literal
-from honcho import Honcho
 
 from dotenv import load_dotenv
+from honcho import Honcho
 
 # Add project root to path so we can import src as a package
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -19,9 +18,9 @@ from src.tool_registry import tool  # noqa: E402
 
 # Import existing research tools
 from src.tools.internet_search import internet_search  # noqa: E402
-from src.tools.ls import ls
-from src.tools.read_file import read_file
-from src.tools.write_file import write_file
+from src.tools.ls import ls  # noqa: E402
+from src.tools.read_file import read_file  # noqa: E402
+from src.tools.write_file import write_file  # noqa: E402
 
 # Load environment variables
 _ = load_dotenv()

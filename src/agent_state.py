@@ -1,5 +1,3 @@
-# from dataclasses import dataclass
-# from enum import Enum
 from typing import Optional
 
 from honcho import Honcho
@@ -30,8 +28,13 @@ class AgentState:
 
         self.peer_id = peer_id
 
+        # Get or create peer
+        self.peer = self.honcho.peer(peer_id, config={"observe_me": False})
+
         # Get or create session
-        self.session = self.honcho.session(session_id)
+        self.session = self.honcho.session(
+            session_id, config={"deriver_disabled": True}
+        )
 
     def add_message(self, peer_name: str, content: str, metadata: dict = {}) -> None:
         """
@@ -105,14 +108,3 @@ class AgentState:
             Session metadata dictionary
         """
         return self.session.get_metadata()
-
-    # def create_new_session(self, session_id: str) -> None:
-    #     """
-    #     Create and switch to a new session.
-    #
-    #     Args:
-    #         session_id: The new session identifier
-    #     """
-    #     self.session_id = session_id
-    #     self.session = self.honcho.session(session_id)
-    #     self.session.add_peers([self.agent_peer, self.user_peer])

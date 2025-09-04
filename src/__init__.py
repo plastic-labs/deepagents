@@ -1,4 +1,3 @@
-from .main import create_deep_agent, SubAgent
-from .state import AgentState
+from .agent import Agent, SubAgent, create_deep_agent
 
-__all__ = ["create_deep_agent", "AgentState", "SubAgent"]
+__all__ = ["create_deep_agent", "SubAgent", "Agent"]

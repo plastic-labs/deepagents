@@ -4,6 +4,10 @@ from typing import Any, Callable, get_type_hints
 
 
 class ToolRegistry:
+    """
+    ToolRegistry: a set of tools and their schemas that are available to the agent.
+    """
+
     def __init__(self):
         self.tools: dict[str, Callable] = {}
         self.schemas: dict[str, dict[str, Any]] = {}
@@ -27,12 +31,9 @@ class ToolRegistry:
         type_hints = get_type_hints(func)
 
         schema = {
-            "type": "function",
-            "function": {
-                "name": func.__name__,
-                "description": description or func.__doc__ or "",
-                "parameters": {"type": "object", "properties": {}, "required": []},
-            },
+            "name": func.__name__,
+            "description": description or func.__doc__ or "",
+            "input_schema": {"type": "object", "properties": {}, "required": []},
         }
 
         for param_name, param in sig.parameters.items():
@@ -42,10 +43,10 @@ class ToolRegistry:
             param_schema = {
                 "type": self._python_type_to_json_type(type_hints.get(param_name, str))
             }
-            schema["function"]["parameters"]["properties"][param_name] = param_schema
+            schema["input_schema"]["properties"][param_name] = param_schema
 
             if param.default == inspect.Parameter.empty:
-                schema["function"]["parameters"]["required"].append(param_name)
+                schema["input_schema"]["required"].append(param_name)
 
         return schema
 
@@ -70,6 +71,9 @@ class ToolRegistry:
 
     def get_schema(self, name: str) -> dict[str, Any]:
         return self.schemas.get(name, {})
+
+    def get_description(self, name: str) -> str:
+        return self.schemas.get(name, {}).get("description", "")
 
     def execute(self, name: str, arguments: dict[str, Any]) -> Any:
         if name not in self.tools:

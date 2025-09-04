@@ -2,98 +2,127 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Development Environment
+## Development Commands
 
-This is a Python project using uv for dependency management (Python 3.12+). Install dependencies with:
+### Running Examples
 ```bash
-uv sync
+# Activate virtual environment first
+source .venv/bin/activate
+
+# Basic test example
+python -m examples.test
+
+# Research example (requires API keys)
+python -m examples.research_example
+
+# Conversational research example
+python -m examples.conversational_research_example
+
+# Dialogue example
+python -m examples.dialogue_example
 ```
 
-Run code with:
+### Linting and Formatting
 ```bash
-uv run python examples/dialogue_example.py
-uv run python examples/research_example.py
+# Format code (using ruff which is included in dependencies)
+ruff format src/ examples/
+
+# Lint code
+ruff check src/ examples/
 ```
 
-Code quality:
+### Environment Setup
 ```bash
-uv run ruff check   # Lint the codebase
-uv run ruff format  # Format code
+# Copy environment template
+cp .env.template .env
+
+# Required API keys in .env:
+# ANTHROPIC_API_KEY=your_key_here
+# HONCHO_API_KEY=your_key_here  
+# TAVILY_API_KEY=your_key_here
 ```
 
 ## Architecture Overview
 
-DeepAgents is an AI agent framework built around task orchestration and tool delegation. The core architecture follows this pattern:
+This is a multi-agent AI framework built around conversational agents with tool calling capabilities and persistent memory via Honcho.
 
 ### Core Components
 
-- **Agent** (`src/agent.py`): Main agent class with conversation management and tool execution
-- **AgentState** (`src/state.py`): Stateful container for messages, files, and todos across agent conversations
-- **ToolRegistry** (`src/tools.py`): Decorator-based tool registration system for function calling
-- **LLMClient** (`src/llm.py`): Anthropic API wrapper for Claude integration
-- **TaskAgent** (`src/main.py`): Multi-agent coordination system with subagent handoffs
+**Agent System** (`src/agent.py`):
+- `Agent`: Main conversational agent with tool execution loop
+- `SubAgent`: Lightweight agent for delegation
+- Both use streaming responses and memory persistence
+- Support up to 50 iterations per conversation
 
-### Key Patterns
+**State Management** (`src/agent_state.py`):
+- Integration with Honcho API for persistent conversation memory
+- Cross-session knowledge querying and conversation search
+- Metadata management for sessions
 
-**Tool Definition**: Use the `@tool` decorator to create callable functions:
+**Tool System** (`src/tool_registry.py`):
+- Decorator-based tool registration with automatic schema generation
+- Function signature introspection for parameter validation
+- Centralized tool execution with error handling
+
+**LLM Interface** (`src/llm.py`):
+- Anthropic Claude API client with streaming support
+- Tool calling integration with function schemas
+- Async/sync dual interface
+
+### Built-in Tools (`src/tools/`)
+
+- `internet_search`: Tavily-powered web search
+- `ls`: List files in `agent_output/` directory
+- `read_file`/`write_file`: File operations scoped to `agent_output/`
+- All tools use the `@tool` decorator for automatic registration
+
+### Agent Creation Pattern
+
+Use `create_deep_agent()` from `src/main.py` as the entry point:
+
 ```python
-from src.tools import tool
+from src import create_deep_agent
+from src.tool_registry import tool
+from src.tools import internet_search, ls, read_file, write_file
 
-@tool(description="Search the internet")
-def search_tool(query: str) -> dict:
-    return {"results": [...]}
-```
-
-**Agent Creation**: Use `create_deep_agent()` factory function:
-```python
-from src import create_deep_agent, SubAgent
+# Custom tool example
+@tool(description="Your tool description")
+def my_custom_tool(param: str) -> str:
+    return f"Result: {param}"
 
 agent = create_deep_agent(
-    tools=[search_tool, write_tool],
-    instructions="System prompt here",
-    subagents=[SubAgent(...)],  # Optional
-    verbose=True  # Enable detailed logging
+    name="MyAgent",
+    tools=[my_custom_tool, internet_search, ls, read_file, write_file],
+    instructions="Your agent instructions here",
+    model="claude-4-sonnet-20250514",  # Default model
+    verbose=True
 )
+
+agent.invoke("Hello!")
 ```
 
-**SubAgent Pattern**: Create specialized agents for specific tasks:
-```python
-researcher = SubAgent(
-    name="researcher",
-    description="Conducts research tasks",
-    prompt="You are a research specialist...",
-    tools=["internet_search"]  # Tool names as strings
-)
-```
+### Memory and Sessions
 
-**State Management**: Files and conversations persist in AgentState:
-- `state.files` - In-memory file system
-- `state.messages` - Conversation history
-- `state.todos` - Task tracking
+- Each agent gets a unique session ID for conversation persistence
+- Messages automatically stored in Honcho with peer identification
+- Cross-agent knowledge sharing through peer chat functionality
+- Session metadata for context preservation
 
-### Multi-Agent Coordination
+### Key Dependencies
 
-The framework supports hierarchical agent delegation:
-1. Main agent receives user task
-2. Delegates subtasks to specialized subagents via `invoke_subagent` tool
-3. SubAgents complete tasks and return results
-4. Main agent synthesizes final response
+- `honcho-ai`: Conversation memory and agent state management
+- `tavily-python`: Internet search capabilities  
+- `aiohttp`: Async HTTP client for streaming
+- `python-dotenv`: Environment variable management
+- `ruff`: Code formatting and linting
 
-Built-in tools available to all agents:
-- `write_todos` - Task management
-- `invoke_subagent` - Agent delegation
-- `ls`, `read_file`, `write_file`, `edit_file` - File operations
+## File Structure Context
 
-## Environment Variables
+- `src/`: Core framework code
+- `examples/`: Usage examples and patterns
+- `agent_output/`: Sandboxed directory for agent file operations
+- `.env`: Required API keys (copy from `.env.template`)
 
-Required in `.env` file:
-```
-ANTHROPIC_API_KEY=your_api_key_here
-```
+## Testing
 
-## Examples
-
-- `examples/dialogue_example.py` - Multi-agent coordination demo
-- `examples/research_example.py` - Research workflow with subagents
-
-Both examples show the enhanced logging system that tracks agent conversations and tool usage in detail.
+No formal test suite is present. Test functionality using the example scripts in `examples/`.
