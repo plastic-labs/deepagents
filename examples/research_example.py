@@ -9,88 +9,104 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.join(script_dir, "..")
 sys.path.insert(0, project_root)
 
-from src import AgentState, SubAgent, create_deep_agent  # noqa: E402
-from src.tools.internet_search import internet_search  # noqa: E402
+from src import SubAgent, create_deep_agent  # noqa: E402
+from src.tools import internet_search, ls, read_file, write_file  # noqa: E402
 
 # Load environment variables
 load_dotenv()
 
-# Research sub-agent prompt
-sub_research_prompt = """You are a dedicated researcher. Your job is to conduct research based on the users questions.
+# Research sub-agent instructions
+research_instructions = """You are a dedicated researcher. Your job is to conduct thorough research based on the user's questions.
 
-Conduct thorough research and then reply to the user with a detailed answer to their question
+Process:
+1. Use internet_search to gather information on the requested topic
+2. Search for multiple aspects: key developments, statistics, real-world examples, challenges
+3. Compile your findings into a comprehensive response
 
-only your FINAL answer will be passed on to the user. They will have NO knowledge of anything except your final message, so your final report should be your final message!"""
+Your final response should include:
+- Key developments and breakthroughs
+- Market data and statistics
+- Real-world case studies and examples
+- Current challenges and solutions
+- Future trends and implications
 
-# Critique sub-agent prompt
-sub_critique_prompt = """You are a dedicated editor. You are being tasked to critique a report.
+Be thorough but efficient - conduct 3-5 targeted searches to gather comprehensive information."""
 
-You can find the report at `final_report.md`.
+# Critique sub-agent instructions
+critique_instructions = """You are a professional report editor and critic.
 
-Things to check:
-- Check that each section is appropriately named
-- Check that the report is comprehensive and detailed
-- Check that the article covers key areas and provides valuable insights
-- Check that the article has a clear structure and fluent language
-- Provide constructive feedback for improvement"""
+Process:
+1. Use read_file to examine the report that needs review
+2. Evaluate the report across multiple dimensions
+3. Provide structured feedback with specific recommendations
+
+Evaluation criteria:
+- Structure and organization
+- Comprehensiveness and depth of coverage  
+- Use of data and evidence
+- Clarity and readability
+- Professional quality
+- Areas for improvement
+
+Provide a clear, actionable critique with specific suggestions for enhancement."""
 
 # Create subagents
-research_sub_agent = SubAgent(
+research_subagent = SubAgent(
     name="research-agent",
-    description="Used to research more in depth questions. Only give this researcher one topic at a time.",
-    prompt=sub_research_prompt,
-    tools=["internet_search"],
+    description="Used to research in-depth questions. Only give this researcher one topic at a time.",
+    tools=[internet_search],
+    instructions=research_instructions,
 )
 
-critique_sub_agent = SubAgent(
+critique_subagent = SubAgent(
     name="critique-agent",
-    description="Used to critique the final report and provide feedback.",
-    prompt=sub_critique_prompt,
+    description="Used to critique reports and provide feedback.",
+    tools=[read_file, ls],
+    instructions=critique_instructions,
 )
 
-# Research instructions
-research_instructions = """You are an expert researcher. Your job is to conduct thorough research, and then write a polished report.
+# Main research coordinator instructions
+research_coordinator_instructions = """You are an expert research coordinator. Your job is to conduct thorough research and write polished reports.
 
-The first thing you should do is to write the original user question to `question.txt` so you have a record of it.
+Your workflow should be:
 
-Use the research-agent to conduct deep research. It will respond to your questions/topics with a detailed answer.
+1. Save the original user question to `question.txt` using write_file (do this only once)
+2. Use the research-agent subagent to conduct deep research on the topic
+3. Write a comprehensive report to `final_report.md` based on the research findings
+4. Optionally use the critique-agent to review your report and provide feedback
+5. When you have completed the research and written the report, use complete_task to provide the final result
 
-When you think you have enough information to write a final report, write it to `final_report.md`.
+Important guidelines:
+- Only save the question once at the beginning
+- Focus on producing a single, high-quality comprehensive report
+- Use the research findings to create detailed, well-structured content
+- Don't repeat the same actions multiple times
 
-You can call the critique-agent to get a critique of the final report. After that (if needed) you can do more research and edit the `final_report.md`.
-
-Write a comprehensive report with proper structure, detailed analysis, and source references."""
+Available tools:
+- invoke_subagent: Delegate research and critique tasks to specialized agents
+- write_file: Save files (filename, content) - use sparingly and purposefully
+- read_file: Read existing files when needed
+- ls: List files in the output directory
+- complete_task: Signal completion and provide final result"""
 
 
 async def main():
-    # Check for API key
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("Please set ANTHROPIC_API_KEY in your .env file")
-        return
-
-    # Create the agent with subagents and enhanced dialogue logging
     agent = create_deep_agent(
-        [internet_search],
-        research_instructions,
-        subagents=[research_sub_agent, critique_sub_agent],
         name="ResearchCoordinator",
-        verbose=True,  # Enable enhanced dialogue logging
+        tools=[ls, read_file, write_file],
+        instructions=research_coordinator_instructions,
+        subagents=[research_subagent, critique_subagent],
+        verbose=True,
     )
-
-    # Create state
-    state = AgentState()
-    state.add_message("user", "Research the impact of AI on healthcare in 2024")
 
     print("🤖 Starting deep research agent with subagents...")
     print("This may take a few minutes...")
 
     # Run agent
-    result = await agent.invoke(state)
+    result = agent.invoke("Research the impact of AI on healthcare in 2024")
 
     print("\n=== Research Complete ===")
-
-    print(f"✅ Todos completed: {[todo.content for todo in result.todos]}")
+    print(f"\033[92mFinal result: {result}\033[0m")
 
 
 if __name__ == "__main__":
