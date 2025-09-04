@@ -1,51 +1,50 @@
 import asyncio
-import sys
 import os
-from typing import Dict, List
+import sys
+
 from dotenv import load_dotenv
 
 # Add project root to path so we can import src as a package
 script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.join(script_dir, '..')
+project_root = os.path.join(script_dir, "..")
 sys.path.insert(0, project_root)
 
-from src import create_deep_agent, AgentState
-from src.tools import tool
+from src import create_deep_agent  # noqa: E402
+from src.tool_registry import tool  # noqa: E402
+from src.tools import internet_search, ls, read_file, write_file  # noqa: E402
 
 # Load environment variables
-_ = load_dotenv()
+load_dotenv()
 
-# Example usage
-@tool(description="Search the internet for information")
-def internet_search(query: str) -> Dict[str, List[str]]:
-    """Search the internet"""
-    return {"results": [f"Found results for {query}"]}
+
+@tool(description="Get current date and time")
+def get_current_time() -> str:
+    """Get the current date and time"""
+    from datetime import datetime
+
+    return datetime.now().isoformat()
+
 
 async def main():
-    # Check for API keys
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("Please set ANTHROPIC_API_KEY in your .env file")
-        return
-    
-    # Create agent with enhanced dialogue logging
+    # Create agent with registered tools
     agent = create_deep_agent(
-        [internet_search],
+        "Researcher",
+        [get_current_time, internet_search, ls, read_file, write_file],
         "You are a helpful research assistant.",
-        name="ResearchAssistant",
-        verbose=True  # Enable enhanced dialogue logging
     )
-    
-    # Create state
-    state = AgentState()
-    state.add_message("user", "What is the capital of France?")
-    
+
+    print("Starting agent...")
+
     # Run agent
-    result = await agent.invoke(state)
-    
-    print("Messages:", result.messages)
-    print("Files:", result.files)
-    print("Todos:", [todo.content for todo in result.todos])
+    result = agent.invoke("What is the current time?")
+    print(f"\033[92mFinal result: {result}\033[0m")
+
+    # Run agent again
+    result = agent.invoke(
+        "Who is the current president of France? Check the news for the latest information."
+    )
+    print(f"\033[92mFinal result: {result}\033[0m")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
