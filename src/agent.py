@@ -72,7 +72,7 @@ class Agent:
                 else f"🔧 [{self.name}] {message}"
             )
 
-    def invoke(
+    async def invoke(
         self, first_message: str = "Hello", *, parent_agent: str | None = None
     ) -> str:
         tool_names = [tool.__name__ for tool in self.tools]
@@ -146,7 +146,7 @@ You are a subagent. When you have completed your task, provide your final result
                             last_text_response = item["text"]
                         if item.get("type") == "tool_use":
                             has_tool_calls = True
-                        result = self._handle_content_item(item)
+                        result = await self._handle_content_item(item)
                         if result:
                             return result
                 else:
@@ -154,7 +154,7 @@ You are a subagent. When you have completed your task, provide your final result
                         last_text_response = content["text"]
                     if content.get("type") == "tool_use":
                         has_tool_calls = True
-                    result = self._handle_content_item(content)
+                    result = await self._handle_content_item(content)
                     if result:
                         return result
 
@@ -172,7 +172,7 @@ You are a subagent. When you have completed your task, provide your final result
 
         self._log(f"Task failed after {iteration + 1} iterations", "DEBUG")
 
-    def _handle_content_item(self, item: dict[str, Any]) -> str | None:
+    async def _handle_content_item(self, item: dict[str, Any]) -> str | None:
         if item.get("type") == "text":
             response_text = item["text"]
             self._log(f"{response_text}")
@@ -181,9 +181,9 @@ You are a subagent. When you have completed your task, provide your final result
         elif item.get("type") == "tool_use":
             tool_name = item["name"]
             tool_args = item["input"]
-            return self._execute_tool_call(tool_name, tool_args)
+            return await self._execute_tool_call(tool_name, tool_args)
 
-    def _execute_tool_call(
+    async def _execute_tool_call(
         self, tool_name: str, tool_args: dict[str, Any]
     ) -> str | None:
         if tool_name == "complete_task":
@@ -204,7 +204,7 @@ You are a subagent. When you have completed your task, provide your final result
             return None
 
         try:
-            result = registry.execute(name=tool_name, arguments=tool_args)
+            result = await registry.execute(name=tool_name, arguments=tool_args)
             result_preview = (
                 str(result)[:150] + "..." if len(str(result)) > 150 else str(result)
             )

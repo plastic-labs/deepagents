@@ -14,7 +14,7 @@ class AgentState:
         self,
         peer_id: str,
         session_id: str,
-        workspace_id: str = "deepagents",
+        workspace_id: str = "deepagents-stream-5",
     ):
         """
         Initialize AgentState with Honcho integration.

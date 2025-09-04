@@ -41,7 +41,7 @@ async def main():
 
     # Run agent again
     result = agent.invoke(
-        "Who is the current president of the United States? Check the news for the latest information."
+        "Who is the current president of France? Check the news for the latest information."
     )
     print(f"\033[92mFinal result: {result}\033[0m")
 

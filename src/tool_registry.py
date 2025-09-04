@@ -75,12 +75,15 @@ class ToolRegistry:
     def get_description(self, name: str) -> str:
         return self.schemas.get(name, {}).get("description", "")
 
-    def execute(self, name: str, arguments: dict[str, Any]) -> Any:
+    async def execute(self, name: str, arguments: dict[str, Any]) -> Any:
         if name not in self.tools:
             raise ValueError(f"Tool {name} not found")
 
         func = self.tools[name]
-        return func(**arguments)
+        if inspect.iscoroutinefunction(func):
+            return await func(**arguments)
+        else:
+            return func(**arguments)
 
 
 registry = ToolRegistry()
